@@ -1,8 +1,10 @@
 package com.batch.customSpringBatch.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -12,6 +14,8 @@ import java.util.Date;
 @Table(name="CONTROL_LOAD_FILE")
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ControlLoadFile {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -33,7 +37,5 @@ public class ControlLoadFile {
     private String status;
     @Column(name ="PAYSTUBLOADTRANSID")
     private int paystubLoadTransactionId;
-
-
 
 }

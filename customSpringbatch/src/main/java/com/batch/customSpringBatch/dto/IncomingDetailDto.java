@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -14,5 +16,5 @@ public class IncomingDetailDto {
     private String fileName;
     private int totalRecords;
     private String fileToken;
-    private String dateTime;
+    private LocalDateTime dateTime;
 }

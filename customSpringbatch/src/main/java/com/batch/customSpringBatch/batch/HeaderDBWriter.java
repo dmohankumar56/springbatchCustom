@@ -20,8 +20,8 @@ public class HeaderDBWriter implements ItemWriter<ControlLoadFile> {
 
 
     @Override
-    public void write(Chunk<? extends ControlLoadFile> chunk) throws Exception {
-        controlLoadFileRepository.saveAll(chunk.getItems());
+    public void write(Chunk<? extends ControlLoadFile> chunk)  {
+            controlLoadFileRepository.save(chunk.getItems().get(0));
+        }
 
-    }
 }

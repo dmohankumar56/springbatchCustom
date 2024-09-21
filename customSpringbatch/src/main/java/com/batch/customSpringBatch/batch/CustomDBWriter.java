@@ -1,19 +1,17 @@
 package com.batch.customSpringBatch.batch;
 
-import com.batch.customSpringBatch.dto.OutgoingFileDto;
 import com.batch.customSpringBatch.dao.ControlDetailRecordsRepository;
 import com.batch.customSpringBatch.dao.ControlLoadFileRepository;
 import com.batch.customSpringBatch.dto.HeaderDto;
 import com.batch.customSpringBatch.dto.OutgoingDetailDto;
+import com.batch.customSpringBatch.dto.OutgoingFileDto;
+import com.batch.customSpringBatch.dto.OutgoingFooterDto;
 import com.batch.customSpringBatch.model.ControlDetailRecords;
 import com.batch.customSpringBatch.model.ControlLoadFile;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 @Component
 public class CustomDBWriter implements ItemWriter<OutgoingFileDto> {
@@ -33,16 +31,17 @@ public class CustomDBWriter implements ItemWriter<OutgoingFileDto> {
     public void write(Chunk<? extends OutgoingFileDto> chunk) throws Exception {
         OutgoingFileDto outgoingFile = chunk.getItems().get(0);
         HeaderDto header = outgoingFile.getHeaderDto();
+        OutgoingFooterDto footerDto = outgoingFile.getOutgoingFooterDto();
 
         // Create and save ControlLoadFile entity
         ControlLoadFile controlLoadFile = ControlLoadFile.builder()
                 .fileName(header.getFileName())
                 .fileUniqueId(header.getFileUniqueId())
-                .dateTime(parseDate(header.getDateTime()))
+                .dateTime(header.getDateTime())
                 .totalFiles(outgoingFile.getDetailDtoList().size())
-                .fileLoadedCnt(0)  // Adjust as needed
-                .fileRejectCnt(0)  // Adjust as needed
-                .status("Notified")  // Adjust as needed
+                .fileLoadedCnt(footerDto.getProcessedRecords())  // Adjust as needed
+                .fileRejectCnt(footerDto.getFailedRecords())  // Adjust as needed
+                .status("Sent")  // Adjust as needed
                 .paystubLoadTransactionId(0)  // Adjust as needed
                 .build();
         controlLoadFile = controlLoadFileRepository.save(controlLoadFile);
@@ -55,7 +54,7 @@ public class CustomDBWriter implements ItemWriter<OutgoingFileDto> {
                         .fileName(detail.getFileName())
                         .totalRecords(detail.getTotalRecords())
                         .fileToken(detail.getFileToken())
-                        .fileDate(parseDate(detail.getDateTime()))
+                        .fileDate(detail.getDateTime())
                         .successRecordsCnt(detail.getSuccessRecords())
                         .failedRecordsCnt(detail.getFailedRecords())
                         .fileStatus(detail.getStatus())
@@ -65,10 +64,6 @@ public class CustomDBWriter implements ItemWriter<OutgoingFileDto> {
         }
     }
 
-    private LocalDateTime parseDate(String dateStr) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");  // Adjust the format as needed
-        return LocalDateTime.parse(dateStr, formatter);
-    }
 }
 
 

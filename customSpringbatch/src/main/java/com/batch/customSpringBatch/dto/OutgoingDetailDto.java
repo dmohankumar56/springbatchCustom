@@ -3,6 +3,8 @@ package com.batch.customSpringBatch.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 public class OutgoingDetailDto {
@@ -10,7 +12,7 @@ public class OutgoingDetailDto {
     private String fileName;
     private int totalRecords;
     private String fileToken;
-    private String dateTime;
+    private LocalDateTime dateTime;
     private int successRecords;
     private int failedRecords;
     private String status;

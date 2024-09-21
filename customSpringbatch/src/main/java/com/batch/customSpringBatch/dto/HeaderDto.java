@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -13,5 +15,5 @@ public class HeaderDto {
     private String indicator;
     private String fileName;
     private String fileUniqueId;
-    private String dateTime;
+    private LocalDateTime dateTime;
 }

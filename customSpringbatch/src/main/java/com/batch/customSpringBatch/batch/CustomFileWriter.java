@@ -5,17 +5,21 @@ import com.batch.customSpringBatch.dto.OutgoingFooterDto;
 import com.batch.customSpringBatch.dto.HeaderDto;
 import com.batch.customSpringBatch.dto.OutgoingDetailDto;
 import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.file.FlatFileItemWriter;
 import org.springframework.batch.item.file.builder.FlatFileItemWriterBuilder;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class CustomFileWriter implements ItemWriter<OutgoingFileDto> {
 
     @Override
     public void write(Chunk<? extends OutgoingFileDto> chunk) throws Exception {
-         new FlatFileItemWriterBuilder<OutgoingFileDto>()
+        FlatFileItemWriter<OutgoingFileDto> writer = new FlatFileItemWriterBuilder<OutgoingFileDto>()
                 .name("outgoingFileWriter")
                 .resource(new FileSystemResource("C:\\Users\\mohan\\OneDrive\\Documents\\walbatch\\outbound\\outgoing_file.txt"))
                 .lineAggregator(outgoingFileDto -> {
@@ -53,6 +57,19 @@ public class CustomFileWriter implements ItemWriter<OutgoingFileDto> {
                     return sb.toString();
                 })
                 .build();
+
+        ExecutionContext executionContext = new ExecutionContext();
+
+        writer.open(executionContext);
+
+        // Write each item in the chunk
+        List<OutgoingFileDto> outgoingFileDtos = (List<OutgoingFileDto>) chunk.getItems();
+
+        // Write the chunk items
+        writer.write(chunk);
+
+        // Close the writer after writing
+        writer.close();
 
     }
 

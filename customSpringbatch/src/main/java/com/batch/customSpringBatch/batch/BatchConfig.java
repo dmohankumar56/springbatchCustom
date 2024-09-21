@@ -1,33 +1,28 @@
 package com.batch.customSpringBatch.batch;
 
-import com.batch.customSpringBatch.dto.IncomingDetailDto;
+import com.batch.customSpringBatch.dto.IncomingFileDto;
 import com.batch.customSpringBatch.dto.OutgoingFileDto;
-import com.batch.customSpringBatch.model.ControlLoadFile;
+import jakarta.persistence.EntityManagerFactory;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.file.FlatFileItemReader;
-import org.springframework.batch.item.file.LineMapper;
-import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.support.CompositeItemWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,81 +33,33 @@ public class BatchConfig {
     private final CustomDBWriter customDBWriter;
     private final CustomProcessor customProcessor;
     private final CustomFileWriter customFileWriter;
-    private final HeaderDBWriter headerDBWriter;
-
+    private final EntityManagerFactory entityManagerFactory;
+    private final DetailsFileReader detailsFileReader;
     @Autowired
     public BatchConfig(
             CustomDBWriter customDBWriter,
             CustomProcessor customProcessor,
-            CustomFileWriter customFileWriter,HeaderDBWriter headerDBWriter) {
+            CustomFileWriter customFileWriter,
+             EntityManagerFactory entityManagerFactory, DetailsFileReader detailsFileReader) {
         this.customDBWriter = customDBWriter;
         this.customProcessor = customProcessor;
         this.customFileWriter = customFileWriter;
-        this.headerDBWriter = headerDBWriter;
-    }
-
-    @Bean
-    public ItemReader<IncomingDetailDto> detailReader() throws IOException {
-        return new DetailsFileReader("C:\\Users\\mohan\\OneDrive\\Documents\\walbatch\\inbound\\incoming.txt");
-
+        this.entityManagerFactory = entityManagerFactory;
+        this.detailsFileReader = detailsFileReader;
     }
 
     @Bean
     public Step processFileStep(JobRepository jobRepository, PlatformTransactionManager  transactionManager) throws IOException {
         return new StepBuilder("processFileStep", jobRepository)
-                .<IncomingDetailDto, OutgoingFileDto>chunk(999, transactionManager)
-                .reader(detailReader())
+                .<IncomingFileDto, OutgoingFileDto>chunk(1, transactionManager)
+                .reader(detailsFileReader)
                 .processor(customProcessor)
                 .writer(compositeItemWriter(customFileWriter, customDBWriter))
+                .allowStartIfComplete(true)
                 .transactionManager(transactionManager)
                 .build();
     }
 
-
-
-    @Bean
-    public FlatFileItemReader<ControlLoadFile> headerFileReader() throws IOException {
-        return new FlatFileItemReaderBuilder<ControlLoadFile>()
-                .name("headerFileReader")
-                .resource(new FileSystemResource("C:\\Users\\mohan\\OneDrive\\Documents\\walbatch\\inbound\\incoming.txt"))
-                .lineMapper(new LineMapper<ControlLoadFile>() {
-                    @Override
-                    public ControlLoadFile mapLine(String line, int lineNumber) throws Exception {
-                        // Check if the line starts with 'H' (for header)
-                        if (line.startsWith("H")) {
-                            // Parse the dateTime and header data
-                            LocalDateTime dateTime = getLocalDateTime(line);
-                            return ControlLoadFile.builder()
-                                    .fileName(line.substring(1, 21).trim())         // File name is 20 characters
-                                    .fileUniqueId(line.substring(21, 57).trim())    // Unique ID is 36 characters
-                                    .dateTime(dateTime)                             // Parsed dateTime
-                                    .build();
-                        } else {
-                            // Return null if the line is not a header (Spring Batch will skip nulls)
-                            return null;
-                        }
-                    }
-                })
-                .build();
-    }
-
-
-    private LocalDateTime getLocalDateTime(String line) {
-        String dateTimeStr = line.substring(57, 73).trim(); // 2024061200:00:00
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHH:mm:ss");
-        return LocalDateTime.parse(dateTimeStr, formatter);
-    }
-
-
-    @Bean
-    public Step headerStep(JobRepository jobRepository, PlatformTransactionManager  transactionManager) throws IOException {
-        return new StepBuilder("headerStep", jobRepository)
-                .<ControlLoadFile, ControlLoadFile>chunk(1,transactionManager)
-                .reader(headerFileReader())
-                .writer(headerDBWriter)
-                .transactionManager(transactionManager)
-                .build();
-    }
 
     @Bean
     public CompositeItemWriter<OutgoingFileDto> compositeItemWriter(
@@ -136,25 +83,34 @@ public class BatchConfig {
     ) throws IOException {
         return new JobBuilder("processFileJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
-                .start(headerStep)
-                .next(processFileStep)
+                .start(processFileStep)
                 .build();
     }
 
     @Bean
-    public JobRepository jobRepository(DataSource dataSource, PlatformTransactionManager transactionManager) throws Exception {
+    public JobRepository jobRepository(DataSource dataSource) throws Exception {
         JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
         factory.setDataSource(dataSource);
-        factory.setTransactionManager(transactionManager);
-        factory.setIsolationLevelForCreate("ISOLATION_DEFAULT");
+        factory.setTransactionManager(transactionManager());
+        factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
         factory.afterPropertiesSet();
         return factory.getObject();
     }
 
 
     @Bean
-    public PlatformTransactionManager transactionManager(DataSource dataSource) {
-        return new DataSourceTransactionManager(dataSource);
+    public PlatformTransactionManager transactionManager() {
+        return new JpaTransactionManager(entityManagerFactory);
     }
+
+    @Bean
+    public JobLauncher getJobLauncher(DataSource dataSource) throws Exception {
+        TaskExecutorJobLauncher taskExecutorJobLauncher = new TaskExecutorJobLauncher();
+        taskExecutorJobLauncher.setJobRepository(jobRepository(dataSource));
+        taskExecutorJobLauncher.afterPropertiesSet();
+        return taskExecutorJobLauncher;
+    }
+
+
 }
 
