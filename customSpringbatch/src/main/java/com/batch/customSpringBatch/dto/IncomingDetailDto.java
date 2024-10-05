@@ -12,9 +12,12 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class IncomingDetailDto {
+    private String detailLineInfo;
     private String indicator;
     private String fileName;
     private int totalRecords;
     private String fileToken;
     private LocalDateTime dateTime;
+    private boolean errorFlag;
+    private String errorMessage;
 }

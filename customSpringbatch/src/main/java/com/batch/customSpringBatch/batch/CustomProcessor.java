@@ -35,6 +35,15 @@ public class CustomProcessor implements ItemProcessor<IncomingFileDto, OutgoingF
         // Map details
         List<OutgoingDetailDto> outgoingDetails = incomingFileDto.getDetailDtoList().stream()
                 .map(detail -> {
+                    // Check if the error flag is set in IncomingDetailDto (set in your reader)
+                    if (detail.isErrorFlag()) {
+                        // Handle the error case without querying
+                        return OutgoingDetailDto.builder()
+                                .errorFlag(true)
+                                .status("BAD_DATA") // Indicate error status
+                                .detailLineInfo(detail.getDetailLineInfo()) // Add erroneous line details
+                                .build();
+                    } else {
                     // Fetch the PayloadStubFile based on fileName, fileToken, fileDateTime, and appOrgId
                     Optional<PayloadStubFile> payloadStub = payloadStubRepository.findByFileNameAndFileTokenAndFileDateTimeAndAppOrgId(
                             detail.getFileName(),
@@ -58,7 +67,7 @@ public class CustomProcessor implements ItemProcessor<IncomingFileDto, OutgoingF
                             .failedRecords(totalErrors)
                             .status(String.valueOf(payloadStub.map(PayloadStubFile::getStatus))) // Set status based on whether the payload exists
                             .build();
-                })
+                }})
                 .collect(Collectors.toList());
 
         // Map footer

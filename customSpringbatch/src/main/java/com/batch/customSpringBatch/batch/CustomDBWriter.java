@@ -13,6 +13,9 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Component
 public class CustomDBWriter implements ItemWriter<OutgoingFileDto> {
 
@@ -44,13 +47,14 @@ public class CustomDBWriter implements ItemWriter<OutgoingFileDto> {
                 .status("Sent")  // Adjust as needed
                 .paystubLoadTransactionId(0)  // Adjust as needed
                 .build();
-        controlLoadFile = controlLoadFileRepository.save(controlLoadFile);
+       // controlLoadFileRepository.save(controlLoadFile);
 
+        List<ControlDetailRecords> detailRecordsList = new ArrayList<>();
         // Iterate through detail DTOs and save ControlDetailRecords entities
         for (OutgoingFileDto outgoingFileDto : chunk.getItems()) {
             for (OutgoingDetailDto detail : outgoingFileDto.getDetailDtoList()) {
                 ControlDetailRecords controlDetailRecords = ControlDetailRecords.builder()
-                        .controlLoadId(controlLoadFile.getControlLoadId())
+                        .controlLoadFile(controlLoadFile)
                         .fileName(detail.getFileName())
                         .totalRecords(detail.getTotalRecords())
                         .fileToken(detail.getFileToken())
@@ -59,9 +63,14 @@ public class CustomDBWriter implements ItemWriter<OutgoingFileDto> {
                         .failedRecordsCnt(detail.getFailedRecords())
                         .fileStatus(detail.getStatus())
                         .build();
-                controlDetailRecordsRepository.save(controlDetailRecords);
+                //controlDetailRecordsRepository.save(controlDetailRecords);
+                detailRecordsList.add(controlDetailRecords);
             }
+
         }
+        controlLoadFile.setControlDetailRecords(detailRecordsList);
+        // Save the controlLoadFile (this will automatically save the detail records due to cascade = CascadeType.ALL)
+        controlLoadFileRepository.save(controlLoadFile);
     }
 
 }

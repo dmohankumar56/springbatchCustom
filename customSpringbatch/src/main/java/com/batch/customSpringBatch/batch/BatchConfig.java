@@ -3,8 +3,7 @@ package com.batch.customSpringBatch.batch;
 import com.batch.customSpringBatch.dto.IncomingFileDto;
 import com.batch.customSpringBatch.dto.OutgoingFileDto;
 import jakarta.persistence.EntityManagerFactory;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
+import org.springframework.batch.core.*;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
@@ -22,9 +21,14 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableBatchProcessing
@@ -55,6 +59,18 @@ public class BatchConfig {
                 .reader(detailsFileReader)
                 .processor(customProcessor)
                 .writer(compositeItemWriter(customFileWriter, customDBWriter))
+                .listener(new StepExecutionListener() {
+                    @Override
+                    public void beforeStep(StepExecution stepExecution) {
+                        // Retrieve the job parameters
+                        String filePath = stepExecution.getJobParameters().getString("fileName");
+                        try {
+                            detailsFileReader.setFilePath(filePath); // Set the file path for the reader
+                        } catch (IOException e) {
+                            throw new RuntimeException("Failed to set file path: " + e.getMessage());
+                        }
+                    }
+                })
                 .allowStartIfComplete(true)
                 .transactionManager(transactionManager)
                 .build();
@@ -81,9 +97,11 @@ public class BatchConfig {
                               Step headerStep ,
                               Step processFileStep
     ) throws IOException {
+        Path errorFolderPath = Paths.get("C:\\Users\\mohan\\OneDrive\\Documents\\walbatch\\badfile\\");
         return new JobBuilder("processFileJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
                 .start(processFileStep)
+                .listener(new FileMoveJobExecutionListener(errorFolderPath))
                 .build();
     }
 
@@ -103,13 +121,13 @@ public class BatchConfig {
         return new JpaTransactionManager(entityManagerFactory);
     }
 
-    @Bean
+   /* @Bean
     public JobLauncher getJobLauncher(DataSource dataSource) throws Exception {
         TaskExecutorJobLauncher taskExecutorJobLauncher = new TaskExecutorJobLauncher();
         taskExecutorJobLauncher.setJobRepository(jobRepository(dataSource));
         taskExecutorJobLauncher.afterPropertiesSet();
         return taskExecutorJobLauncher;
-    }
+    }*/
 
 
 }

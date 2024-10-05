@@ -19,8 +19,9 @@ public class ControlDetailRecords {
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name ="CONTROL_DETAIL_RECORD_ID")
     private Long controlDetailRecordId;
-    @Column(name ="CONTROL_LOAD_ID")
-    private Long controlLoadId;
+    @ManyToOne
+    @JoinColumn(name = "CONTROL_LOAD_ID", referencedColumnName = "CONTROL_LOAD_ID")
+    private ControlLoadFile controlLoadFile;
     @Column(name ="FILE_NAME")
     private String fileName;
     @Column(name ="TOTAL_RECORDS")

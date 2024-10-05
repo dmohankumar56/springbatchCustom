@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 
 
 @Entity
@@ -37,5 +38,7 @@ public class ControlLoadFile {
     private String status;
     @Column(name ="PAYSTUBLOADTRANSID")
     private int paystubLoadTransactionId;
+    @OneToMany(mappedBy = "controlLoadFile", cascade = CascadeType.ALL)
+    private List<ControlDetailRecords> controlDetailRecords;
 
 }

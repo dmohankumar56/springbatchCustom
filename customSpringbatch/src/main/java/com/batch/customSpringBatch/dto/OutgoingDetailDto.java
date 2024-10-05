@@ -16,4 +16,6 @@ public class OutgoingDetailDto {
     private int successRecords;
     private int failedRecords;
     private String status;
+    private String detailLineInfo;
+    private boolean errorFlag;
 }

@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class PayloadStubFile {
 
+    @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="PAYSTUBLOADID")
     private Long paystubLoadId;
